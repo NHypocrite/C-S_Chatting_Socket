@@ -7,6 +7,7 @@ NUM = 0
 user = {}
 sockets = {}
 
+# 导入已注册的用户名，密码文件
 try:
     f=open(FILE_NAME, 'r')
     users = eval(f.read())
@@ -18,6 +19,7 @@ except:
     users = {'root':'123456'}
 
 
+# 聊天室程序
 def chat(service_client_socket, addr):
     global NUM
     mode = False
@@ -30,10 +32,11 @@ def chat(service_client_socket, addr):
             print(addr, "请求登陆")
             while True:
                 ret = service_client_socket.recv(1024)
-                if sign.decode() == 'error1':
+                # 如果中途关闭窗口，这里传来的应该是utf-8格式的‘error1’
+                if ret.decode() == 'error1':
                     print(addr, "关闭了登录窗口 ")
                     exit(0)
-
+                #  正常状态传来的应当是json格式的账号-密码对
                 Info = json.loads(ret)
                 user_name = Info['name']
                 user_passwd = Info['password']
@@ -61,6 +64,7 @@ def chat(service_client_socket, addr):
                 if ret.decode() == 'error2':
                     print(addr, "关闭了注册窗口")
                     break
+
                 try:
                     Info = json.loads(ret)
                     user_name = Info['name']
@@ -87,7 +91,7 @@ def chat(service_client_socket, addr):
         print('Accept new connection from %s:%s...' % addr)
         NUM = NUM + 1
         print("聊天室人数：", NUM)
-
+        # 向已登入的人员通告新成员
         for scs in sockets: 
             sockets[scs].send(data + ' 进入聊天室 '.encode('utf-8'))  
 
@@ -95,9 +99,11 @@ def chat(service_client_socket, addr):
         sockets[addr] = service_client_socket
 
     while True:
+        # 接收到新信息
         d = service_client_socket.recv(1024)
         print(addr, d)
         if (('EXIT'.lower() in d.decode('utf-8'))|(d.decode('utf-8') == 'error1')):
+            # 退出信息
             name = user[addr]   
 
             user.pop(addr) 
@@ -110,13 +116,14 @@ def chat(service_client_socket, addr):
             NUM = NUM - 1
             break
         else: 
+            # 正常消息
             print('"%s" from %s:%s' %(d.decode('utf-8'), addr[0], addr[1]))  
             for scs in sockets:    
                 if sockets[scs] != service_client_socket:  
                     sockets[scs].send(d)     
 
 
-
+# 程序主体部分
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 创建socket对象
 
