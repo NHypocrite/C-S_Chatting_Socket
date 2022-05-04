@@ -1,8 +1,12 @@
 import socket, threading, json
+import os
+import hashlib
+import struct
 
 
 FILE_NAME = "user.txt"
 NUM = 0
+host = '127.0.0.1'
 
 user = {}
 sockets = {}
@@ -116,7 +120,108 @@ def chat(service_client_socket, addr):
             NUM = NUM - 1
             break
         elif (dataReceived.lower().startswith('#upload'.lower())):    # 用户要上传文件到服务器
-            pass
+
+
+
+
+
+            print("服务器尝试接受文件\n")
+
+            # fileSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # fileSock.bind((host, 12345))
+            # fileSock.listen(5)
+        
+            # print("传送文件临时Socket已建立\n")
+        
+            connection, address = fileSock.accept()
+            print("发送文件的地址：", address)
+            
+            file_info_size = struct.calcsize('128sl')
+
+            buf = connection.recv(file_info_size)   # 接收文件的大小
+
+            if buf:
+                file_name, file_size = struct.unpack('128sl', buf)
+                file_name = file_name.decode().strip('\00')
+
+                file_new_dir = os.path.join('Server'+'ReceivedFiles')
+                print("接受文件：",file_name,"接受文件存放路径", file_new_dir)
+                if not os.path.exists(file_new_dir):
+                    os.makedirs(file_new_dir)
+
+                file_new_name = os.path.join(file_new_dir, file_name)
+                
+                received_size = 0
+                if os.path.exists(file_new_name):   # 若之前已有传输
+                    received_size = os.path.getsize(file_new_name)
+
+                connection.send(str(received_size).encode())    # 发送已接收的文件大小
+
+                w_file = open(file_new_name, 'ab')
+
+                print("start receiving file:", file_name)
+
+                while not received_size == file_size:   # 接收文件内容
+                    r_data = connection.recv(1024)
+                    received_size += len(r_data)
+                    w_file.write(r_data)
+
+                w_file.close()
+                print("接收完成！\n")
+            connection.close()
+            print("传送文件临时Socket已断开\n")
+
+
+
+            # # 1.先接收长度，建议8192
+            # server_response = service_client_socket.recv(1024)
+            # file_size = int(server_response.decode("utf-8"))
+
+            # print("接收到的大小：", file_size)
+
+            # # 2.接收文件内容
+            # service_client_socket.send("准备好接收".encode("utf-8"))  # 接收确认
+            # print("准备好接收\n")
+            # filename = "new" + dataReceived.split(" ")[1]
+
+            # f = open(filename, "wb")
+            # received_size = 0
+            # m = hashlib.md5()
+
+            # while received_size < file_size:
+            #     size = 0  # 准确接收数据大小，解决粘包
+            #     if file_size - received_size > 1024: # 多次接收
+            #         size = 1024
+            #     else:  # 最后一次接收完毕
+            #         size = file_size - received_size
+
+            #     data = service_client_socket.recv(size)  # 多次接收内容，接收大数据
+            #     data_len = len(data)
+            #     received_size += data_len
+            #     print("已接收：", int(received_size/file_size*100), "%")
+
+            #     m.update(data)
+            #     f.write(data)
+
+            # f.close()
+
+            # print("实际接收的大小:", received_size)  # 解码
+
+            # # 3.md5值校验
+            # md5_sever = service_client_socket.recv(1024).decode("utf-8")
+            # md5_client = m.hexdigest()
+            # print("服务器发来的md5:", md5_sever)
+            # print("接收文件的md5:", md5_client)
+            # if md5_sever == md5_client:
+            #     print("MD5值校验成功")
+            # else:
+            #     print("MD5值校验失败")
+
+        
+
+
+
+
         elif (dataReceived.lower().startswith('#get'.lower())):       # 用户要从服务器下载文件
             pass
         else: 
@@ -131,10 +236,19 @@ def chat(service_client_socket, addr):
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 创建socket对象
 
-addr = ('127.0.0.1', 9999)
+addr = (host, 9999)
 s.bind(addr)  # 绑定地址和端口
 s.listen(128)
 print('TCP Server on', addr[0], ":",addr[1],"......")
+
+fileSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+fileSock.bind((host, 12345))
+fileSock.listen(5)
+
+print("传送文件临时Socket已建立\n")
+
+
+
 
 while True:
     try:

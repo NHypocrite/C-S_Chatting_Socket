@@ -4,9 +4,12 @@ import socket
 import threading
 import time
 import json
+import os
+import hashlib
+import struct
 
 string = ''
-
+host = '127.0.0.1'
 
 # def my_string(s_input):
 #     string = s_input.get()
@@ -59,7 +62,76 @@ def sendButton(name, messageEntry, ChatWindow, chatTextField):
         s.send(string.encode('utf-8'))
         exit()
     elif (string.lower().startswith('#upload'.lower())):    # 上传
-        pass
+        s.send(string.encode('utf-8'))
+
+
+
+
+        file_name = string.split(" ")[1]
+
+        fileSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        fileSock.connect((host, 12345))
+        print("传送文件临时Socket已建立\n")  
+        
+        # 定义文件信息struct；
+        file_head = struct.pack('128sl', os.path.basename(file_name).encode(),
+                            os.stat(file_name).st_size)
+    
+        fileSock.send(file_head)    # 发送文件信息
+        
+        received_size = int(fileSock.recv(2014).decode())   # 接收已经传送的文件大小
+    
+        read_file = open(file_name, "rb")
+        read_file.seek(received_size)
+        while True:
+            # time.sleep(1)
+            file_data = read_file.read(1024)
+            if not file_data:
+                break
+            fileSock.send(file_data)
+    
+        read_file.close()
+        fileSock.close()
+        print("传送文件临时Socket已断开\n")
+
+
+
+
+        # filename = string.split(" ")[1]
+        # if os.path.isfile(filename):  # 判断文件存在
+        #     # 1.先发送文件大小，让客户端准备接收
+        #     size = os.stat(filename).st_size  #获取文件大小
+        #     s.send(str(size).encode("utf-8"))  # 发送数据长度
+        #     print("发送的大小：", size)
+
+        #     # 2.发送文件内容
+        #     ack=s.recv(1024).decode("utf-8")  # 接收确认
+        #     print("已收到确认："+ack)
+
+        #     m = hashlib.md5()
+        #     f = open(filename, "rb")
+        #     for line in f:
+        #         s.send(line)  # 发送数据
+        #         m.update(line)
+        #     f.close()
+
+        #     # 3.发送md5值进行校验
+        #     md5 = m.hexdigest()
+        #     s.send(md5.encode("utf-8"))  # 发送md5值
+        #     print("md5:", md5)
+
+
+
+
+
+
+
+
+        s.send((name + " 上传了文件" + file_name).encode('utf-8'))
+        writeChatText("我："+" 上传了文件" + file_name, chatTextField)
+
+
+        
     elif (string.lower().startswith('#get'.lower())):       # 下载
         pass
     else:
@@ -220,11 +292,11 @@ def confirm(usernameEntry, passwordEntry, password2Entry, Window):
         usernameEntry.delete(0, tk.END)
         return
     else:
-        # 用户名符合要求，检查密码是否符合要求
         # while True:
             # if ((passwordEntry.get() == "") | (password2Entry.get() == "")):
             #     time.sleep(1)
             # else:
+        # 用户名符合要求，检查密码是否符合要求
         user_passwd[0] = str(passwordEntry.get())
         if ' ' in str(user_passwd[0]):
             messagebox.showinfo("错误", "密码中不能含有空格")
@@ -281,7 +353,7 @@ def End():
 
 # 创建socket对象：
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server = ('127.0.0.1', 9999)
+server = (host, 9999)
 s.connect(server)  # 建立连接
 # s.send("log".encode('utf-8'))
 
